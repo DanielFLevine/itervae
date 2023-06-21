@@ -121,10 +121,11 @@ if __name__ == "__main__":
     dataset_path = "~/datasets"
     batch_size = 100
     device = torch.device("cpu")
-    if torch.backends.mps.is_available():
+    print(f"\nCUDA AVAILABLE: {torch.cuda.is_available()}\n")
+    if torch.cuda.is_available():
         device = torch.device("cuda")
-    elif torch.cuda.is_available():
-        device = torch.device("cuda")
+
+    print(f"\nDEVICE: {device}\n")
     lr = 1e-3
 
     train_pipeline(
