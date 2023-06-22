@@ -7,9 +7,10 @@ To get started, create a conda environment:
 conda create -n itervae
 conda activate itervae
 ```
-Install the following packages:
+Use the following commands to install the relevant packages. Do NOT use ```conda``` to install ```matplotlib```. As of 6/22/2023, using ```conda install matplotlib``` will change the CUDA build of pytorch 2.0.1 to the CPU build.
 ```
-conda install matplotlib tqdm
+conda install tqdm
+pip install matplotlib
 ```
 Select the right pytorch installation from the pytorch website [here](https://pytorch.org/get-started/locally/) and install using conda.
 
