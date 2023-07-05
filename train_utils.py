@@ -2,11 +2,13 @@ import torch
 from tqdm import tqdm
 import torch.nn as nn
 
-def loss_function(x, x_hat, mean, log_var):
+def loss_function(x, x_hat, mean, log_var, encoder_trajectory, decoder_trajectory):
     reproduction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction='sum')
     KLD = - 0.5 * torch.sum(1+ log_var - mean.pow(2) - log_var.exp())
+    trajectory_loss = torch.diagonal(torch.cdist(encoder_trajectory, decoder_trajectory, p=2.0))
 
-    return reproduction_loss + KLD
+
+    return reproduction_loss + KLD + torch.sum(trajectory_loss)
 
 def train_model(
         model,
@@ -30,8 +32,8 @@ def train_model(
 
             optimizer.zero_grad()
 
-            x_hat, mean, log_var = model(x)
-            loss = loss_function(x, x_hat, mean, log_var)
+            x_hat, mean, log_var, encoder_trajectory, decoder_trajectory = model(x)
+            loss = loss_function(x, x_hat, mean, log_var, encoder_trajectory, decoder_trajectory)
             
             train_loss += loss.item()
             
@@ -46,8 +48,8 @@ def train_model(
             x = x.view(batch_size, x_dim)
             x = x.to(device)
 
-            x_hat, mean, log_var = model(x)
-            loss = loss_function(x, x_hat, mean, log_var)
+            x_hat, mean, log_var, encoder_trajectory, decoder_trajectory = model(x)
+            loss = loss_function(x, x_hat, mean, log_var, encoder_trajectory, decoder_trajectory)
             val_loss += loss.item()
         avg_val_loss = val_loss / (batch_idx*batch_size)
         val_losses.append(avg_val_loss)
