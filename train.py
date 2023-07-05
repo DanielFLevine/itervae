@@ -14,7 +14,6 @@ from IterVAE import IterVAE
 from train_utils import train_model
 
 
-
 def get_loaders(ds, dataset_path, batch_size):
     image_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -51,9 +50,6 @@ def plot_loss(epochs, hidden_dim, losses, loss_name, iter_type, ds_name):
     plt.savefig(save_path+file_name)
     plt.close()
 
-from IterVAE import IterVAE
-from train_utils import train_model
-from torch.optim import Adam
 
 def train_pipeline(hidden_dims, datasets, num_enc, dataset_path, batch_size, epochs, lr, device):
     ds_names = {MNIST: "MNIST", EMNIST: "EMNIST", CIFAR10: "CIFAR10"}
