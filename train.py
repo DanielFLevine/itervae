@@ -132,13 +132,6 @@ if __name__ == "__main__":
     device = torch.device("cpu")
     if torch.backends.mps.is_available():
         device = torch.device("mps")
-    hidden_dims = [200, 400]
-    datasets = [EMNIST, CIFAR10, MNIST]
-    num_enc = 5
-    epochs = 100
-    dataset_path = "~/datasets"
-    batch_size = 100
-    device = torch.device("cpu")
 
     print(f"\nCUDA AVAILABLE: {torch.cuda.is_available()}\n")
     if torch.cuda.is_available():
