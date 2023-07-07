@@ -17,6 +17,8 @@ from IterVAE import IterVAE
 from train_utils import train_model
 
 
+
+
 def get_loaders(ds, dataset_path, batch_size):
     image_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -98,6 +100,8 @@ def train_pipeline(hidden_dims, datasets, num_enc, dataset_path, batch_size, epo
                     output_dim=x_dim,
                     num_linears=1,
                     num_iters=i,
+                    num_encoder_linears=1,
+                    num_encoder_iters=i,
                     device=device).to(device)
                 
                 optimizer = Adam(model.parameters(), lr=lr)
@@ -128,6 +132,14 @@ if __name__ == "__main__":
     device = torch.device("cpu")
     if torch.backends.mps.is_available():
         device = torch.device("mps")
+    hidden_dims = [200, 400]
+    datasets = [EMNIST, CIFAR10, MNIST]
+    num_enc = 5
+    epochs = 100
+    dataset_path = "~/datasets"
+    batch_size = 100
+    device = torch.device("cpu")
+
     print(f"\nCUDA AVAILABLE: {torch.cuda.is_available()}\n")
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -163,6 +175,7 @@ if __name__ == "__main__":
 # Compute loss over trajectory - pair up forward and backward outputs for L2 loss and compare inception score
 # Also look at outputs explicitly
 # Compare iterative VAE vs non-iterative VAE and compare inception scores - does more iterations make better outputs?
+
 
             
         
