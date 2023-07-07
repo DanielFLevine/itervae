@@ -117,9 +117,9 @@ def train_model(
         fid = compute_frechet_distance(test_loader, generated_dataloader, inception_model, device)
         fid_scores.append(fid)
         wandb.log({
-            "Training Loss": avg_train_loss,
-            "Validation Loss": avg_val_loss,
-            "FID": fid
+            f"Training Loss for {model.num_linears} Layers {model.num_iters} Iterations": avg_train_loss,
+            f"Validation Loss for {model.num_linears} Layers {model.num_iters} Iterations": avg_val_loss,
+            f"FID for {model.num_linears} Layers {model.num_iters} Iterations": fid
             })
         
     print("Finish!!")

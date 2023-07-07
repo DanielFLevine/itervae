@@ -74,7 +74,7 @@ def train_pipeline(hidden_dims, datasets, num_enc, dataset_path, batch_size, epo
                     hidden_dim=hidden_dim,
                     latent_dim=200,
                     output_dim=x_dim,
-                    num_linears=i,
+                    num_linears=i+1,
                     num_iters=1,
                     device=device).to(device)
                 
@@ -99,7 +99,7 @@ def train_pipeline(hidden_dims, datasets, num_enc, dataset_path, batch_size, epo
                     latent_dim=200,
                     output_dim=x_dim,
                     num_linears=1,
-                    num_iters=i,
+                    num_iters=i+1,
                     num_encoder_linears=1,
                     num_encoder_iters=i,
                     device=device).to(device)
@@ -118,9 +118,11 @@ def train_pipeline(hidden_dims, datasets, num_enc, dataset_path, batch_size, epo
                 val_losses_iters.append(vlosses)
                 fid_scores_iters.append(fids)
 
-            with open(f"fid_scores_layers_hdim{hidden_dim}_ds{ds_names[ds]}.npy", "wb") as f:
+            fid_scores_layers = np.array(fid_scores_layers)
+            fid_scores_iters = np.array(fid_scores_iters)
+            with open(f"fid_scores/fid_scores_layers_hdim{hidden_dim}_ds{ds_names[ds]}.npy", "wb") as f:
                 np.save(f, fid_scores_layers)
-            with open(f"fid_scores_iters_hdim{hidden_dim}_ds{ds_names[ds]}.npy", "wb") as f:
+            with open(f"fid_scores/fid_scores_iters_hdim{hidden_dim}_ds{ds_names[ds]}.npy", "wb") as f:
                 np.save(f, fid_scores_iters)
 
             plot_loss(epochs, hidden_dim, train_losses_layers, "Training Loss", "Layers", ds_names[ds])

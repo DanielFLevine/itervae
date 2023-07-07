@@ -105,6 +105,7 @@ class IterVAE(nn.Module):
         super(IterVAE, self).__init__()
 
         self.num_iters = num_iters
+        self.num_linears = num_linears
         self.input_dim=input_dim
         self.latent_dim=latent_dim # Needed for generating samples
         self.Embedding = Embedding(

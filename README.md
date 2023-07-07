@@ -9,7 +9,7 @@ conda activate itervae
 ```
 Use the following commands to install the relevant packages. Do NOT use ```conda``` to install ```matplotlib```. As of 6/22/2023, using ```conda install matplotlib``` will change the CUDA build of pytorch 2.0.1 to the CPU build.
 ```
-conda install tqdm
+conda install tqdm scipy wandb
 pip install matplotlib
 ```
 Select the right pytorch installation from the pytorch website [here](https://pytorch.org/get-started/locally/) and install using conda.
