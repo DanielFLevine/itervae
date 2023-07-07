@@ -120,7 +120,7 @@ def train_pipeline(hidden_dims, datasets, num_enc, dataset_path, batch_size, epo
 
             with open(f"fid_scores_layers_hdim{hidden_dim}_ds{ds_names[ds]}.npy", "wb") as f:
                 np.save(f, fid_scores_layers)
-            with open(f"fid_scores_layers_hdim{hidden_dim}_ds{ds_names[ds]}.npy", "wb") as f:
+            with open(f"fid_scores_iters_hdim{hidden_dim}_ds{ds_names[ds]}.npy", "wb") as f:
                 np.save(f, fid_scores_iters)
 
             plot_loss(epochs, hidden_dim, train_losses_layers, "Training Loss", "Layers", ds_names[ds])
