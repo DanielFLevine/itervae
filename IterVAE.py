@@ -106,6 +106,7 @@ class IterVAE(nn.Module):
 
         self.num_iters = num_iters
         self.input_dim=input_dim
+        self.latent_dim=latent_dim # Needed for generating samples
         self.Embedding = Embedding(
             input_dim=input_dim,
             hidden_dim=hidden_dim
@@ -162,6 +163,13 @@ class IterVAE(nn.Module):
         decoder_trajectory.reverse()
         
         return x_hat, mean, log_var, torch.stack(encoder_trajectory), torch.stack(decoder_trajectory)
+    
+    def decode(self, z):
+        h = self.Projection(z)
+        for _ in range(self.num_iters):
+            h = self.Decoder(h)
+        x_hat = self.Prediction(h)
+        return x_hat
 
 if __name__ == "__main__":
     model = IterVAE(

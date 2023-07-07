@@ -1,7 +1,10 @@
 import os
+from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import torch
+import wandb
 import matplotlib.pyplot as plt
 from torch.optim import Adam
 from torchvision.datasets import MNIST, EMNIST, CIFAR10
@@ -28,7 +31,7 @@ def get_loaders(ds, dataset_path, batch_size):
         test_dataset  = ds(dataset_path, transform=image_transform, train=False, download=True)
 
     train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, **kwargs)
-    test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=False, **kwargs)
+    test_loader  = DataLoader(dataset=test_dataset,  batch_size=batch_size, shuffle=True, **kwargs)
     return train_loader, test_loader
 
 
@@ -61,6 +64,8 @@ def train_pipeline(hidden_dims, datasets, num_enc, dataset_path, batch_size, epo
             val_losses_layers = []
             train_losses_iters = []
             val_losses_iters = []
+            fid_scores_layers = []
+            fid_scores_iters = []
             for i in range(num_enc):
                 model = IterVAE(
                     input_dim=x_dim,
@@ -72,7 +77,7 @@ def train_pipeline(hidden_dims, datasets, num_enc, dataset_path, batch_size, epo
                     device=device).to(device)
                 
                 optimizer = Adam(model.parameters(), lr=lr)
-                tlosses, vlosses = train_model(
+                tlosses, vlosses, fids = train_model(
                     model=model,
                     optimizer=optimizer,
                     epochs=epochs,
@@ -83,6 +88,7 @@ def train_pipeline(hidden_dims, datasets, num_enc, dataset_path, batch_size, epo
                     )
                 train_losses_layers.append(tlosses)
                 val_losses_layers.append(vlosses)
+                fid_scores_layers.append(fids)
 
             for i in range(num_enc):
                 model = IterVAE(
@@ -95,7 +101,7 @@ def train_pipeline(hidden_dims, datasets, num_enc, dataset_path, batch_size, epo
                     device=device).to(device)
                 
                 optimizer = Adam(model.parameters(), lr=lr)
-                tlosses, vlosses = train_model(
+                tlosses, vlosses, fids = train_model(
                     model=model,
                     optimizer=optimizer,
                     epochs=epochs,
@@ -106,6 +112,12 @@ def train_pipeline(hidden_dims, datasets, num_enc, dataset_path, batch_size, epo
                     )
                 train_losses_iters.append(tlosses)
                 val_losses_iters.append(vlosses)
+                fid_scores_iters.append(fids)
+
+            with open(f"fid_scores_layers_hdim{hidden_dim}_ds{ds_names[ds]}.npy", "wb") as f:
+                np.save(f, fid_scores_layers)
+            with open(f"fid_scores_layers_hdim{hidden_dim}_ds{ds_names[ds]}.npy", "wb") as f:
+                np.save(f, fid_scores_iters)
 
             plot_loss(epochs, hidden_dim, train_losses_layers, "Training Loss", "Layers", ds_names[ds])
             plot_loss(epochs, hidden_dim, val_losses_layers, "Validation Loss", "Layers", ds_names[ds])
@@ -134,6 +146,17 @@ if __name__ == "__main__":
         }
     print(f"\nPARAMETERS")
     print(params)
+
+
+    ds_name = "CIFAR10"
+    now = datetime.now()
+    datetime_stamp= now.strftime("%Y-%m-%d-%H_%M_%S")
+    
+    wandb.login()
+    run = wandb.init(
+        project="itervae",
+        name=f"{ds_name}-{datetime_stamp}"
+    )
 
     train_pipeline(**params)
     
