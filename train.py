@@ -1,4 +1,6 @@
+import json
 import os
+from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
 
@@ -6,6 +8,7 @@ import numpy as np
 import torch
 import wandb
 import matplotlib.pyplot as plt
+from transformers import HfArgumentParser
 from torch.optim import Adam
 from torchvision.datasets import MNIST, EMNIST, CIFAR10
 import torchvision.transforms as transforms
@@ -17,6 +20,42 @@ from IterVAE import IterVAE
 from train_utils import train_model
 
 
+@dataclass
+class TrainingArguments:
+    dataset: str = field(
+        default="CIFAR10"
+        )
+    hidden_dim: int = field(
+        default=200
+        )
+    num_linears: int = field(
+        default=1
+        )
+    num_iters: int = field(
+        default=1
+        )
+    epochs: int = field(
+        default=100
+        )
+    dataset_path: str = field(
+        default="~/datasets"
+        )
+    batch_size: int = field(
+        default=100
+        )
+    lr: int = field(
+        default=1e-3
+        )
+    beta: float = field(
+        default=5.0
+        )
+    gamma: float = field(
+        default=1.0
+        )
+    device_str: str = field(
+        default="auto"
+        )
+    
 
 
 def get_loaders(ds, dataset_path, batch_size):
@@ -56,120 +95,94 @@ def plot_loss(epochs, hidden_dim, losses, loss_name, iter_type, ds_name):
     plt.close()
 
 
-def train_pipeline(hidden_dims, datasets, num_enc, dataset_path, batch_size, epochs, lr, device):
-    ds_names = {MNIST: "MNIST", EMNIST: "EMNIST", CIFAR10: "CIFAR10"}
-    for hidden_dim in hidden_dims:
-        for ds in datasets:
-            train_loader, test_loader = get_loaders(ds, dataset_path, batch_size)
-            x_dim = torch.numel(train_loader.dataset[0][0])
-            train_losses_layers = []
-            val_losses_layers = []
-            train_losses_iters = []
-            val_losses_iters = []
-            fid_scores_layers = []
-            fid_scores_iters = []
-            for i in range(num_enc):
-                model = IterVAE(
-                    input_dim=x_dim,
-                    hidden_dim=hidden_dim,
-                    latent_dim=200,
-                    output_dim=x_dim,
-                    num_linears=i+1,
-                    num_iters=1,
-                    device=device).to(device)
-                
-                optimizer = Adam(model.parameters(), lr=lr)
-                tlosses, vlosses, fids = train_model(
-                    model=model,
-                    optimizer=optimizer,
-                    epochs=epochs,
-                    batch_size=batch_size,
-                    train_loader=train_loader,
-                    test_loader=test_loader,
-                    device=device
-                    )
-                train_losses_layers.append(tlosses)
-                val_losses_layers.append(vlosses)
-                fid_scores_layers.append(fids)
+def train_pipeline(
+        hidden_dim,
+        dataset,
+        num_linears,
+        num_iters,
+        dataset_path,
+        batch_size,
+        epochs,
+        lr,
+        device,
+        beta,
+        gamma
+        ):
+    name_to_dataset = {"CIFAR10": CIFAR10, "MNIST": MNIST, "EMNIST": EMNIST}
+    ds = name_to_dataset[dataset]
+    train_loader, test_loader = get_loaders(ds, dataset_path, batch_size)
+    x_dim = torch.numel(train_loader.dataset[0][0])
+    model = IterVAE(
+        input_dim=x_dim,
+        hidden_dim=hidden_dim,
+        latent_dim=200,
+        output_dim=x_dim,
+        num_linears=num_linears,
+        num_iters=num_iters,
+        device=device).to(device)
+    
+    optimizer = Adam(model.parameters(), lr=lr)
+    train_model(
+        model=model,
+        optimizer=optimizer,
+        epochs=epochs,
+        batch_size=batch_size,
+        beta=beta,
+        gamma=gamma,
+        train_loader=train_loader,
+        test_loader=test_loader,
+        device=device
+        )
 
-            for i in range(num_enc):
-                model = IterVAE(
-                    input_dim=x_dim,
-                    hidden_dim=hidden_dim,
-                    latent_dim=200,
-                    output_dim=x_dim,
-                    num_linears=1,
-                    num_iters=i+1,
-                    num_encoder_linears=1,
-                    num_encoder_iters=i,
-                    device=device).to(device)
-                
-                optimizer = Adam(model.parameters(), lr=lr)
-                tlosses, vlosses, fids = train_model(
-                    model=model,
-                    optimizer=optimizer,
-                    epochs=epochs,
-                    batch_size=batch_size,
-                    train_loader=train_loader,
-                    test_loader=test_loader,
-                    device=device
-                    )
-                train_losses_iters.append(tlosses)
-                val_losses_iters.append(vlosses)
-                fid_scores_iters.append(fids)
 
-            fid_scores_layers = np.array(fid_scores_layers)
-            fid_scores_iters = np.array(fid_scores_iters)
-            with open(f"fid_scores/fid_scores_layers_hdim{hidden_dim}_ds{ds_names[ds]}.npy", "wb") as f:
-                np.save(f, fid_scores_layers)
-            with open(f"fid_scores/fid_scores_iters_hdim{hidden_dim}_ds{ds_names[ds]}.npy", "wb") as f:
-                np.save(f, fid_scores_iters)
+    # fid_scores_layers = np.array(fid_scores_layers)
+    # fid_scores_iters = np.array(fid_scores_iters)
+    # with open(f"fid_scores/fid_scores_layers_hdim{hidden_dim}_ds{ds_names[ds]}.npy", "wb") as f:
+    #     np.save(f, fid_scores_layers)
+    # with open(f"fid_scores/fid_scores_iters_hdim{hidden_dim}_ds{ds_names[ds]}.npy", "wb") as f:
+    #     np.save(f, fid_scores_iters)
 
-            plot_loss(epochs, hidden_dim, train_losses_layers, "Training Loss", "Layers", ds_names[ds])
-            plot_loss(epochs, hidden_dim, val_losses_layers, "Validation Loss", "Layers", ds_names[ds])
-            plot_loss(epochs, hidden_dim, train_losses_iters, "Training Loss", "Iterations", ds_names[ds])
-            plot_loss(epochs, hidden_dim, val_losses_iters, "Validation Loss", "Iterations", ds_names[ds])
+    # plot_loss(epochs, hidden_dim, train_losses_layers, "Training Loss", "Layers", ds_names[ds])
+    # plot_loss(epochs, hidden_dim, val_losses_layers, "Validation Loss", "Layers", ds_names[ds])
+    # plot_loss(epochs, hidden_dim, train_losses_iters, "Training Loss", "Iterations", ds_names[ds])
+    # plot_loss(epochs, hidden_dim, val_losses_iters, "Validation Loss", "Iterations", ds_names[ds])
 
 if __name__ == "__main__":
-    device = torch.device("cpu")
-    if torch.backends.mps.is_available():
-        device = torch.device("mps")
-
-    print(f"\nCUDA AVAILABLE: {torch.cuda.is_available()}\n")
-    if torch.cuda.is_available():
+    parser = HfArgumentParser(TrainingArguments)
+    args = parser.parse_args_into_dataclasses()[0]
+    if args.device_str == "cuda":
+        assert torch.cuda.is_available(), "Specified CUDA in arguments, but CUDA is not available."
         device = torch.device("cuda")
+    else:
+        print("\nAUTO DETECTING BEST DEVICE...")
+        device = torch.device("cpu")
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
+    print(f"\nDEVICE IS {device}")
+    print(f"\nTRAINING PARAMETERS")
+    print(json.dumps(asdict(args), indent=2))
+    wandb.init()
 
-    print(f"\nDEVICE: {device}\n")
-    lr = 1e-3
-    params = {
-        "hidden_dims": [50],
-        "datasets": [CIFAR10],
-        "num_enc": 5,
-        "epochs": 100,
-        "dataset_path": "~/datasets",
-        "batch_size": 100,
-        "device": device,
-        "lr": 1e-3
-        }
-    print(f"\nPARAMETERS")
-    print(params)
-
-
-    ds_name = "CIFAR10"
-    now = datetime.now()
-    datetime_stamp= now.strftime("%Y-%m-%d-%H_%M_%S")
-    
-    wandb.login()
-    run = wandb.init(
-        project="itervae",
-        name=f"{ds_name}-{datetime_stamp}"
-    )
-
-    train_pipeline(**params)
+    train_pipeline(
+        hidden_dim=args.hidden_dim,
+        dataset=args.dataset,
+        num_linears=args.num_linears,
+        num_iters=args.num_iters,
+        dataset_path=args.dataset_path,
+        batch_size=args.batch_size,
+        epochs=args.epochs,
+        lr=args.lr,
+        device=device,
+        beta=args.beta,
+        gamma=args.gamma
+        )
     
 # Compute loss over trajectory - pair up forward and backward outputs for L2 loss and compare inception score
-# Also look at outputs explicitly
 # Compare iterative VAE vs non-iterative VAE and compare inception scores - does more iterations make better outputs?
+# Use learnable smoothing factors
+# Also look at outputs explicitly
+# Initialize smoothing at 0.5
+# Make it convolutional
 
 
             

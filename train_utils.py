@@ -42,26 +42,39 @@ def compute_frechet_distance(real_data, generated_data, model, device):
     
     return fid
 
-def loss_function(x, x_hat, mean, log_var, encoder_trajectory, decoder_trajectory):
+def loss_function(
+        x,
+        x_hat,
+        mean,
+        log_var,
+        encoder_trajectory,
+        decoder_trajectory,
+        traj_len,
+        beta,
+        gamma
+        ):
     reproduction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction='sum')
     KLD = - 0.5 * torch.sum(1+ log_var - mean.pow(2) - log_var.exp())
     trajectory_loss = torch.diagonal(torch.cdist(encoder_trajectory, decoder_trajectory, p=2.0))
+    mean_trajectory_loss = torch.sum(trajectory_loss)/traj_len
+    total_loss = reproduction_loss + (beta*KLD) + (gamma*mean_trajectory_loss)
 
-
-    return reproduction_loss + KLD + torch.sum(trajectory_loss)
+    return total_loss, reproduction_loss, KLD, mean_trajectory_loss
 
 def train_model(
         model,
         optimizer,
         epochs,
         batch_size,
+        beta,
+        gamma,
         train_loader,
         test_loader,
         device
         ):
     
     print("Loading inception model for benchmarking...")
-    inception_model = inception_v3(pretrained=True, transform_input=False).to(device).eval()
+    inception_model = inception_v3(weights="IMAGENET1K_V1", transform_input=False).to(device).eval()
     inception_model.fc = nn.Identity()
     inception_model = nn.Sequential(inception_model, nn.Linear(2048, 512)).to(device)
 
@@ -74,6 +87,9 @@ def train_model(
     for epoch in tqdm(range(epochs)):
         model.train()
         train_loss = 0
+        train_rep_loss = 0
+        train_kld = 0
+        train_mean_traj_loss = 0
         for batch_idx, (x, _) in enumerate(train_loader):
             x = x.view(batch_size, x_dim)
             x = x.to(device)
@@ -81,25 +97,64 @@ def train_model(
             optimizer.zero_grad()
 
             x_hat, mean, log_var, encoder_trajectory, decoder_trajectory = model(x)
-            loss = loss_function(x, x_hat, mean, log_var, encoder_trajectory, decoder_trajectory)
+            total_loss, rep_loss, kld, mean_traj_loss = loss_function(
+                x,
+                x_hat,
+                mean,
+                log_var,
+                encoder_trajectory,
+                decoder_trajectory,
+                model.num_iters,
+                beta,
+                gamma
+                )
             
-            train_loss += loss.item()
+            train_loss += total_loss.item()
+            train_rep_loss += rep_loss.item()
+            train_kld += kld.item()
+            train_mean_traj_loss += mean_traj_loss.item()
             
-            loss.backward()
+            total_loss.backward()
             optimizer.step()
 
         avg_train_loss = train_loss / (batch_idx*batch_size)
+        avg_train_rep_loss = train_rep_loss / (batch_idx*batch_size)
+        avg_train_kld = train_kld / (batch_idx*batch_size)
+        avg_train_mean_traj_loss = train_mean_traj_loss / (batch_idx*batch_size)
+
         train_losses.append(avg_train_loss)
         model.eval()
         val_loss = 0
+        val_rep_loss = 0
+        val_kld = 0
+        val_mean_traj_loss = 0
         for batch_idx, (x, _) in enumerate(test_loader):
             x = x.view(batch_size, x_dim)
             x = x.to(device)
 
             x_hat, mean, log_var, encoder_trajectory, decoder_trajectory = model(x)
-            loss = loss_function(x, x_hat, mean, log_var, encoder_trajectory, decoder_trajectory)
-            val_loss += loss.item()
+            total_loss, rep_loss, kld, mean_traj_loss = loss_function(
+                x,
+                x_hat,
+                mean,
+                log_var,
+                encoder_trajectory,
+                decoder_trajectory,
+                model.num_iters,
+                beta,
+                gamma
+                )
+            
+            val_loss += total_loss.item()
+            val_rep_loss += rep_loss.item()
+            val_kld += kld.item()
+            val_mean_traj_loss += mean_traj_loss.item()
+
         avg_val_loss = val_loss / (batch_idx*batch_size)
+        avg_val_rep_loss = val_rep_loss / (batch_idx*batch_size)
+        avg_val_kld = val_kld / (batch_idx*batch_size)
+        avg_val_mean_traj_loss = val_mean_traj_loss / (batch_idx*batch_size)
+
         val_losses.append(avg_val_loss)
         print(f"Epoch: {epoch+1} || Avg Train Loss: {avg_train_loss:.4f} || Avg Val Loss: {avg_val_loss:.4f}")
 
@@ -117,9 +172,15 @@ def train_model(
         fid = compute_frechet_distance(test_loader, generated_dataloader, inception_model, device)
         fid_scores.append(fid)
         wandb.log({
-            f"Training Loss for {model.num_linears} Layers {model.num_iters} Iterations": avg_train_loss,
-            f"Validation Loss for {model.num_linears} Layers {model.num_iters} Iterations": avg_val_loss,
-            f"FID for {model.num_linears} Layers {model.num_iters} Iterations": fid
+            "Training Loss": avg_train_loss,
+            "Validation Loss": avg_val_loss,
+            "FID": fid,
+            "Training Reproduction Loss": avg_train_rep_loss,
+            "Training KLD": avg_train_kld,
+            "Training Mean Trajectory Loss": avg_train_mean_traj_loss,
+            "Validation Reproduction Loss": avg_val_rep_loss,
+            "Validation KLD": avg_val_kld,
+            "Validation Mean Trajectory Loss": avg_val_mean_traj_loss
             })
         
     print("Finish!!")
