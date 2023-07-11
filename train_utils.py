@@ -171,7 +171,7 @@ def train_model(
         val_losses.append(avg_val_loss)
         print(f"Epoch: {epoch+1} || Avg Train Loss: {avg_train_loss:.4f} || Avg Val Loss: {avg_val_loss:.4f}")
 
-        num_samples = batch_size
+        num_samples = 2*batch_size
         print(f"Generating {num_samples} samples...")
         generated_samples = []
         with torch.no_grad():
@@ -187,7 +187,7 @@ def train_model(
         wandb.log({
             "Training Loss": avg_train_loss,
             "Validation Loss": avg_val_loss,
-            "100 Samples FID": fid,
+            "200 Samples FID": fid,
             "Training Reproduction Loss": avg_train_rep_loss,
             "Training KLD": avg_train_kld,
             "Training Mean Trajectory Loss": avg_train_mean_traj_loss,
@@ -202,5 +202,5 @@ def train_model(
     print(f"\nENCODER SMOOTHING FACTORS: {[model.Encoder.smooth_factors[i] for i in range(model.num_convs)]}")
     print(f"\nDECODER SMOOTHING FACTORS: {[model.Decoder.smooth_factors[i] for i in range(model.num_convs)]}")
     print(f"\nENCODER ITER SMOOTHING FACTORS: {[model.iter_enc_smooth_factors[i] for i in range(model.num_iters)]}")
-    print(f"\nDECODER ITER SMOOTHING FACTORS: {[model.inter_dec_smooth_factors[i] for i in range(model.num_iters)]}")
+    print(f"\nDECODER ITER SMOOTHING FACTORS: {[model.iter_dec_smooth_factors[i] for i in range(model.num_iters)]}")
     return train_losses, val_losses, fid_scores

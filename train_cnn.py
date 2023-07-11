@@ -168,8 +168,9 @@ def generate_fid_samples(model, batch_size, num_samples, im_shape, np_save_path=
             generated_batch = model.decode(noise)
             generated_samples.append(generated_batch.cpu().view(im_shape))
     generated_samples = torch.cat(generated_samples, dim=0).cpu().numpy()
-    with open(np_save_path, "wb") as f:
-        np.save(np_save_path, generated_samples)
+    if save:
+        with open(np_save_path, "wb") as f:
+            np.save(np_save_path, generated_samples)
     return generated_samples
 
 
