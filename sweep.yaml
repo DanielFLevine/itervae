@@ -1,18 +1,26 @@
-program: train.py
+program: train_cnn.py
 method: grid
 project: itervae
 metric: 
-  name: FID
+  name: 100 Samples FID
   goal: minimize
+early_terminate:
+  type: hyperband
+  min_iter: 5
+  eta: 2
 parameters:
-  num_linears:
-    value: 1
+  num_convs:
+    values: [3]
   num_iters:
-    values: [1, 2, 3, 4, 5]
+    values: [1]
   beta:
-    values: [1.0, 2.0, 3.0, 4.0, 5.0]
+    values: [0.2, 0.4, 0.6, 0.8, 1.0]
   gamma:
-    values: [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+    values: [0.0, 0.2, 1.0]
+  latent_dim:
+    values: [200]
+  hidden_channels:
+    values: [32]
   dataset:
     value: CIFAR10
 

@@ -16,6 +16,8 @@ date;hostname;pwd
 module load miniconda
 conda activate itervae
 cd <PATH_TO_DIRECTORY>
+export CUDA_LAUNCH_BLOCKING=1
+echo CUDA_LAUNCH BLOCKING is $CUDA_LAUNCH_BLOCKING
 wandb login <YOUR_API_KEY>
 export SWEEP_ID=$(wandb sweep sweep.yaml 2>&1 | awk '/with:/{print $8}')
 echo SWEEP_ID is $SWEEP_ID

@@ -4,8 +4,8 @@ This repo trains and compares iterative VAEs against traditional VAEs. Support f
 
 To get started, create a conda environment:
 ```
-conda create -n vae
-conda activate vae
+conda create -n itervae
+conda activate itervae
 ```
 Use the following commands to install the relevant packages. Do NOT use ```conda``` to install ```matplotlib```. As of 6/22/2023, using ```conda install matplotlib``` will change the CUDA build of pytorch 2.0.1 to the CPU build.
 ```
