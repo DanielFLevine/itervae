@@ -5,9 +5,10 @@ from torch import nn
 from torchvision import transforms
 from tqdm import tqdm
 from scipy.linalg import sqrtm
-from torch.utils.data import DataLoader
 from torchvision.models import inception_v3
+from torchvision.utils import make_grid
 from torchvision.models.feature_extraction import create_feature_extractor
+from torch.utils.data import DataLoader
 
 
 # Function to compute the Frechet Inception Distance
@@ -184,6 +185,16 @@ def train_model(
         print("Computing FID...")
         fid = compute_frechet_distance(iter_test_loader, generated_dataloader, inception_model, device, batch_size)
         fid_scores.append(fid)
+        random_real_samples = next(iter_test_loader)[0]
+        wandb_real_samples = torch.permute(make_grid(random_real_samples[:25].cpu(), nrow=5), (1,2,0)).numpy()
+        wandb_samples = torch.permute(make_grid(generated_samples[:25].cpu(), nrow=5), (1,2,0)).numpy()
+        generated_images = wandb.Image(
+            wandb_samples
+            )
+        real_images = wandb.Image(
+            wandb_real_samples
+            )
+          
         wandb.log({
             "Training Loss": avg_train_loss,
             "Validation Loss": avg_val_loss,
@@ -193,7 +204,9 @@ def train_model(
             "Training Mean Trajectory Loss": avg_train_mean_traj_loss,
             "Validation Reproduction Loss": avg_val_rep_loss,
             "Validation KLD": avg_val_kld,
-            "Validation Mean Trajectory Loss": avg_val_mean_traj_loss
+            "Validation Mean Trajectory Loss": avg_val_mean_traj_loss,
+            "Images/First 25 Generated Images": generated_images,
+            "Images/25 Random Real Images": real_images
             })
         
     print("Finish!!")
